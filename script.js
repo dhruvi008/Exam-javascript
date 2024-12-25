@@ -1,79 +1,62 @@
-let currentUser = null;
-let results = [];
-
-const apiUrl = 'https://your-mock-api.com'; 
+let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+let results = JSON.parse(localStorage.getItem('results')) || [];
 
 function toggleForms() {
   document.getElementById('loginForm').classList.toggle('hidden');
   document.getElementById('signupForm').classList.toggle('hidden');
 }
 
-async function signup() {
+
+function signup() {
   const email = document.getElementById('signupEmail').value;
   const password = document.getElementById('signupPassword').value;
   
   if (email && password) {
-    try {
-      const response = await fetch(`${apiUrl}/users/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await response.json();
-      if (data.success) {
-        alert("Sign Up Successful! Please Log in.");
-        toggleForms();
-      } else {
-        alert("Error during sign up!");
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert("Error during sign up!");
+    const users = JSON.parse(localStorage.getItem('users')) || [];
+    const userExists = users.find(user => user.email === email);
+
+    if (userExists) {
+      alert("Email already registered. Please log in.");
+    } else {
+
+      users.push({ email, password });
+      localStorage.setItem('users', JSON.stringify(users));
+      alert("Sign Up Successful! Please Log in.");
+      toggleForms();
     }
   } else {
     alert("Please fill in all fields.");
   }
 }
 
-async function login() {
+function login() {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
 
-  try {
-    const response = await fetch(`${apiUrl}/users/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await response.json();
-    if (data.success) {
-      currentUser = data.user;
-      document.getElementById('loginForm').classList.add('hidden');
-      document.getElementById('resultForm').classList.remove('hidden');
-      document.getElementById('resultBoard').classList.remove('hidden');
-      alert("Login Successful!");
-      fetchResults();
-    } else {
-      alert("Invalid email or password.");
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert("Login failed!");
+  const users = JSON.parse(localStorage.getItem('users')) || [];
+  const user = users.find(user => user.email === email && user.password === password);
+
+  if (user) {
+    currentUser = user;
+    localStorage.setItem('currentUser', JSON.stringify(currentUser)); 
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('resultForm').classList.remove('hidden');
+    document.getElementById('resultBoard').classList.remove('hidden');
+    alert("Login Successful!");
+    fetchResults();  
+  } else {
+    alert("Invalid email or password.");
   }
 }
 
-async function fetchResults() {
-  try {
-    const response = await fetch(`${apiUrl}/results?userEmail=${currentUser.email}`);
-    results = await response.json();
-    displayResults();
-  } catch (error) {
-    console.error('Error:', error);
-    alert("Error fetching results!");
-  }
+function fetchResults() {
+
+  results = JSON.parse(localStorage.getItem('results')) || [];
+  displayResults();
 }
 
-async function addResult() {
+
+function addResult() {
   const studentName = document.getElementById('studentName').value;
   const subject = document.getElementById('subject').value;
   const score = document.getElementById('score').value;
@@ -81,24 +64,10 @@ async function addResult() {
 
   if (studentName && subject && score && date) {
     const newResult = { studentName, subject, score, date, userEmail: currentUser.email };
-    try {
-      const response = await fetch(`${apiUrl}/results`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newResult)
-      });
-      const data = await response.json();
-      if (data.success) {
-        results.push(newResult);
-        displayResults();
-        document.getElementById('resultForm').reset();
-      } else {
-        alert("Error adding result!");
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert("Error adding result!");
-    }
+    results.push(newResult);
+    localStorage.setItem('results', JSON.stringify(results)); 
+    displayResults();
+    document.getElementById('resultForm').reset();
   } else {
     alert("Please fill in all fields.");
   }
@@ -116,7 +85,7 @@ function displayResults() {
   });
 }
 
- 
+
 function searchResults() {
   const query = document.getElementById('search').value.toLowerCase();
   const filteredResults = results.filter(result =>
@@ -128,10 +97,22 @@ function searchResults() {
 function displayFilteredResults(filteredResults) {
   const scoreboard = document.getElementById('scoreboard');
   scoreboard.innerHTML = ''; 
-  
+
   filteredResults.forEach(result => {
     const li = document.createElement('li');
     li.textContent = `${result.studentName} - ${result.subject} - ${result.score} - ${result.date}`;
     scoreboard.appendChild(li);
   });
 }
+
+
+window.onload = function() {
+  if (currentUser) {
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('resultForm').classList.remove('hidden');
+    document.getElementById('resultBoard').classList.remove('hidden');
+    fetchResults();
+  } else {
+    document.getElementById('loginForm').classList.remove('hidden');
+  }
+};
